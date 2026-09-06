@@ -93,6 +93,11 @@ jobs:
     needs: [build]
 
     steps:
+      - name: connect to tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          
       - name: deploy to ubuntu server
         uses: appleboy/ssh-action@v1.0.3
         with:
