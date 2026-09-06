@@ -45,7 +45,7 @@ app.include_router(vote.router)
 
 @app.get("/") #A decorator that defines a route. Tells FastAPI: "Run the next function when someone visits /."
 async def root(): #Defines an asynchronous function named root. async allows FastAPI to handle many requests efficiently without blocking.
-    return {"message": "Hello, World!"}
+    return {"message": "Hello, World! finally it ended"}
 
 #To start a server = uvicorn main{this is the file name}:app{fastapi instance this is }
 
