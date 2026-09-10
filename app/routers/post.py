@@ -5,6 +5,10 @@ from .. import models, schemas, oauth2
 from ..database import get_db
 from sqlalchemy import func
 
+import json
+from fastapi.encoders import jsonable_encoder
+from .. import cache 
+
 router = APIRouter(
     prefix = "/posts",
     tags = ['Posts']    # to create separate group name "Posts" in the documentation
@@ -16,9 +20,16 @@ async def get_posts(db: Session = Depends(get_db), current_user : int = Depends(
     # cursor.execute("""SELECT * FROM posts""")
     # posts = cursor.fetchall(),
 #    posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
+     # 1. Create a DYNAMIC cache key based on the user's search/pagination
+    cache_key = f"posts_limit:{limit}_skip:{skip}_search{search}"
+    cached_posts = cache.redis_client.get(cache_key)
+
     posts = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).join(models.Vote, models.Vote.post_id == models.Post.id, isouter = True).group_by(models.Post.id).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
-    print(posts)
-    return  posts
+    formatted_posts = [{"Posts": post, "votes": votes} for post, votes in posts]
+    cache.redis_client.setex(cache_key, 60, json.dumps(formatted_posts))
+
+    #print(posts)
+    return  formatted_posts
 
 @router.post("/", status_code = status.HTTP_201_CREATED, response_model = schemas.Post)
 async def create_posts(post : schemas.PostCreate ,db: Session = Depends(get_db), user_id: int = Depends(oauth2.get_current_user)):
@@ -34,6 +45,10 @@ async def create_posts(post : schemas.PostCreate ,db: Session = Depends(get_db),
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
+
+    for key in cache.redis_client.scan_iter("posts_*"):
+        cache.redis_client.delete(key)
+        
     return new_post
 
 
@@ -51,7 +66,7 @@ def get_post(id : int, response : Response, db : Session = Depends(get_db) ):   
     #     response.status_code = status.HTTP_404_NOT_FOUND
     #     return {'message': f"post with id: {id} was not found"}
     # print(post)
-    return post
+    return {"post": post[0], "votes": post[1]}
 
 @router.delete("/{id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_post(id:int, db : Session = Depends(get_db), user_id : int = Depends(oauth2.get_current_user)):
@@ -71,6 +86,10 @@ def delete_post(id:int, db : Session = Depends(get_db), user_id : int = Depends(
     #my_posts.pop(index)
     db.delete(post)
     db.commit()
+
+    for key in cache.redis_client.scan_iter("posts_*"):
+        cache.redis_client.delete(key)
+
     return Response(status_code = status.HTTP_204_NO_CONTENT)
 
 
@@ -93,5 +112,9 @@ def update_post(id:int, updated_post: schemas.PostCreate, db : Session = Depends
     # my_posts[index] = post_dict
     post_query.update(updated_post.dict(), synchronize_session = False)
     db.commit()
+
+    for key in cache.redis_client.scan_iter("posts_*"):
+        cache.redis_client.delete(key)
+        
     return  post_query.first()
 

@@ -106,6 +106,9 @@ jobs:
           password: ${{secrets.PROD_PASSWORD}}  
           script: |
             cd app/src
+            source venv/bin/activate
+            pip install -r requrirements.txt
+            
             git pull
             alembic upgrade head
             echo ${{secrets.PROD_PASSWORD}} | sudo -S systemctl restart api
