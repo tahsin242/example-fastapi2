@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Response , status, HTTPException, Depends, APIRouter
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, selectinload
 from typing import List, Optional
 from .. import models, schemas, oauth2
 from ..database import get_db
@@ -27,7 +27,7 @@ async def get_posts(db: Session = Depends(get_db), current_user : int = Depends(
     if cached_posts:
         return json.loads(cached_posts)
 
-    posts = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).options(joinedload(models.Post.owner)).join(models.Vote, models.Vote.post_id == models.Post.id, isouter = True).group_by(models.Post.id, models.User.id).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
+    posts = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).options(selectinload(models.Post.owner)).join(models.Vote, models.Vote.post_id == models.Post.id, isouter = True).group_by(models.Post.id).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
     formatted_posts = [
         {
             "Post": jsonable_encoder(post),
