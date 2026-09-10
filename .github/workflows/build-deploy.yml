@@ -38,6 +38,16 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     runs-on: ubuntu-latest
     steps:
@@ -108,7 +118,7 @@ jobs:
             cd app/src
             source venv/bin/activate
             pip install -r requrirements.txt
-            
+
             git pull
             alembic upgrade head
             echo ${{secrets.PROD_PASSWORD}} | sudo -S systemctl restart api
