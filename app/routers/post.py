@@ -21,13 +21,13 @@ async def get_posts(db: Session = Depends(get_db), current_user : int = Depends(
     # posts = cursor.fetchall(),
 #    posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
      # 1. Create a DYNAMIC cache key based on the user's search/pagination
-    cache_key = f"posts_limit:{limit}_skip:{skip}_search{search}"
+    cache_key = f"posts_limit:{limit}_skip:{skip}_search:{search}"
     cached_posts = cache.redis_client.get(cache_key)
 
     if cached_posts:
         return json.loads(cached_posts)
 
-    posts = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).options(joinedload(models.Post.owner)).join(models.Vote, models.Vote.post_id == models.Post.id, isouter = True).group_by(models.Post.id).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
+    posts = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).options(joinedload(models.Post.owner)).join(models.Vote, models.Vote.post_id == models.Post.id, isouter = True).group_by(models.Post.id, models.User.id).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
     formatted_posts = [
         {
             "Post": jsonable_encoder(post),
