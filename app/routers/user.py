@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from .. import models, schemas, utils
 from ..database import get_db
 
+from ..celery_worker import send_welcome_email
+
 router = APIRouter(
     prefix = "/users",
     tags = ['Users']
@@ -15,10 +17,12 @@ def create_user(user: schemas.UserCreate, db : Session = Depends(get_db)):
     hasehed_password = utils.hash(user.password)
     user.password = hasehed_password
 
-    new_user = models.User(**user.dict())
+    new_user = models.User(**user.model_dump())
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    send_welcome_email.delay(new_user.email)
 
     return new_user
 
