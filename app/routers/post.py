@@ -9,6 +9,10 @@ import json
 from fastapi.encoders import jsonable_encoder
 from .. import cache 
 
+from ..websocket import manager
+import json
+
+
 router = APIRouter(
     prefix = "/posts",
     tags = ['Posts']    # to create separate group name "Posts" in the documentation
@@ -57,7 +61,18 @@ async def create_posts(post : schemas.PostCreate ,db: Session = Depends(get_db),
 
     for key in cache.redis_client.scan_iter("posts_*"):
         cache.redis_client.delete(key)
-        
+
+    sync_message = {
+        "event": "post_created",
+        "data": {
+            "id": new_post.id,
+            "title": new_post.title,
+            "content": new_post.content,
+            "owner_id": new_post.owner_id
+        }
+    }
+    await manager.broadcast(json.dumps(sync_message))
+    
     return new_post
 
 
@@ -126,3 +141,20 @@ def update_post(id:int, updated_post: schemas.PostCreate, db : Session = Depends
         cache.redis_client.delete(key)
     return  post_query.first()
 
+
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    # 1. Connect the user
+    await manager.connect(websocket)
+    try:
+        # 2. Keep the connection alive and listen for messages from the client
+        while True:
+            # We don't necessarily need to receive data, but we keep the loop running
+            data = await websocket.receive_text()
+            
+            # Optional: If the client sends a "ping", we can "pong" back
+            if data == "ping":
+                await websocket.send_text("pong")
+    except Exception:
+        # 3. Clean up when the user disconnects
+        manager.disconnect(websocket)
