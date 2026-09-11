@@ -54,7 +54,7 @@ async def create_posts(post : schemas.PostCreate ,db: Session = Depends(get_db),
     # my_posts.append(post_dict)
     #print(post.dict())      #saves pydantic model as dictonary
     #new_post = models.Post(title = post.title, content = post.content, published = post.published )
-    new_post = models.Post(owner_id = user_id.id, **post.dict())  #this going to unpack the fields by itself
+    new_post = models.Post(owner_id = user_id.id, **post.model_dump())  #this going to unpack the fields by itself
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
@@ -134,7 +134,7 @@ def update_post(id:int, updated_post: schemas.PostCreate, db : Session = Depends
     # post_dict = post.dict()
     # post_dict['id'] = id
     # my_posts[index] = post_dict
-    post_query.update(updated_post.dict(), synchronize_session = False)
+    post_query.update(updated_post.model_dump(), synchronize_session = False)
     db.commit()
 
     for key in cache.redis_client.scan_iter("posts_*"):
