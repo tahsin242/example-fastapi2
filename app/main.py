@@ -51,4 +51,5 @@ async def root(): #Defines an asynchronous function named root. async allows Fas
 
 #To start a server = uvicorn main{this is the file name}:app{fastapi instance this is }
 
+os.makedirs("app/static/images", exist_ok=True)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
