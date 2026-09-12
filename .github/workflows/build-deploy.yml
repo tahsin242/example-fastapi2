@@ -117,7 +117,7 @@ jobs:
           script: |
             cd app/src
             source venv/bin/activate
-            pip install -r requrirements.txt
+            ${{ secrets.VENV_PIP_PATH }} install -r requrirements.txt
 
             git pull
             alembic upgrade head
