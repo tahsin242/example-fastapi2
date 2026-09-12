@@ -7,6 +7,8 @@ from . database import engine , get_db
 from .routers import post, user, auth, vote
 from .config import settings
 
+from fastapi.staticfiles import StaticFiles
+import os
 
 #models.Base.metadata.create_all(bind = engine) 
 # commented this part because alembic does it well enough
@@ -49,3 +51,4 @@ async def root(): #Defines an asynchronous function named root. async allows Fas
 
 #To start a server = uvicorn main{this is the file name}:app{fastapi instance this is }
 
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
